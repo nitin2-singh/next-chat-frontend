@@ -1,36 +1,157 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 💬 Real-Time Chat Application
 
-## Getting Started
+A **WhatsApp-like real-time chat application** built with **Next.js, Express, Socket.IO, Prisma, PostgreSQL, and Kafka**.
 
-First, run the development server:
+This project supports:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- 1-to-1 chats
+- Realtime messaging
+- Typing indicators
+- Read receipts (✓ / ✓✓)
+- Online presence (only when user joins a chat)
+- Optimistic UI
+- Secure JWT authentication
+
+---
+
+## 🧠 Architecture Overview
+
+```
+Frontend (Next.js)
+│
+│ REST APIs (JWT)
+│ WebSocket (Socket.IO)
+▼
+Backend (Express + Socket.IO)
+│
+│ Prisma ORM
+▼
+PostgreSQL
+│
+│ Kafka (fan-out / async processing)
+▼
+Realtime Consumers
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Design Decisions
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **REST APIs** → persistence & data fetching
+- **Socket.IO** → realtime UX (typing, read receipts, presence)
+- **JWT** → shared auth for REST + WebSocket
+- **Presence in memory** → NOT stored in DB
+- **Kafka** → scalable message fan-out & async processing
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 🛠 Tech Stack
 
-To learn more about Next.js, take a look at the following resources:
+### Frontend
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Next.js (App Router)
+- React + TypeScript
+- Tailwind CSS + shadcn/ui
+- TanStack React Query
+- Socket.IO Client
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Backend
 
-## Deploy on Vercel
+- Node.js
+- Express
+- Socket.IO
+- Prisma ORM
+- PostgreSQL
+- Kafka (KafkaJS)
+- JWT Authentication
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📂 Repository Structure
+
+```
+next-chat/
+├── next-chat-frontend/
+│ ├── app/
+│ ├── components/
+│ ├── hooks/
+│ ├── lib/
+│ └── types/
+│
+├── next-chat-backend/
+│ ├── src/
+│ │ ├── controllers/
+│ │ ├── routes/
+│ │ ├── middleware/
+│ │ ├── config/
+│ │ └── prisma/
+│ └── prisma/
+│
+└── README.md
+```
+
+---
+
+# 🚀 Setup Instructions
+
+## 1️⃣ Backend Setup
+
+### Go to backend
+
+```bash
+cd next-chat-backend
+npm install
+
+```
+
+# Env file backend
+
+```bash
+PORT=4000
+DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/chat_db
+JWT_SECRET=super-secret-change-this
+
+KAFKA_BROKERS=localhost:9092
+KAFKA_CLIENT_ID=chat-backend
+
+```
+
+# Prisma command
+
+```
+npx prisma generate
+npx prisma migrate dev
+```
+
+# Start server
+
+```
+npm run dev
+docker compose up -d
+```
+
+# Frontend Setup
+
+## Go to frontend
+
+```
+cd next-chat-frontend
+```
+
+## Install dependencies
+
+```
+npm install
+```
+
+## Env File
+
+```
+Environment Variables (.env.local)
+NEXT_PUBLIC_API_URL=http://localhost:4000
+NEXT_PUBLIC_SOCKET_URL=http://localhost:4000
+```
+
+## Start frontend
+
+```
+npm run dev
+```
