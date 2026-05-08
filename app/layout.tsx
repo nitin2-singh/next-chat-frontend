@@ -1,17 +1,16 @@
 import type { Metadata } from "next";
 import { Space_Grotesk } from "next/font/google";
-import "./globals.css";
 import { ThemeProviders } from "@/providers/theme-providers";
 import { QueryProvider } from "@/providers/query-providers";
 import { Toaster } from "@/components/ui/sonner";
-
+import "./globals.css";
 export const space_grotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-space",
   display: "swap",
 });
 export const metadata: Metadata = {
-  title: "Next chat",
+  title: "Chat Scale",
   description: "A chat app for everyone",
 };
 
