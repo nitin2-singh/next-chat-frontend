@@ -18,36 +18,41 @@ export function SearchResults({
   const { data, isLoading } = useUserSearch(debouncedSearch);
   const startChat = useStartChat();
 
-  if (!debouncedSearch) return null;
-
   if (isLoading) {
     return (
-      <div className="mx-2 mt-2 rounded-xl border p-4 text-sm">Searching…</div>
+      <Card className="rounded-xl shadow-lg border p-4 text-sm bg-popover text-popover-foreground">
+        Searching…
+      </Card>
     );
   }
 
   if (!data?.length) {
     return (
-      <div className="mx-2 mt-2 rounded-xl border p-4 text-sm text-muted-foreground">
+      <Card className="rounded-xl shadow-lg border p-4 text-sm text-muted-foreground bg-popover text-popover-foreground">
         No users found
-      </div>
+      </Card>
     );
   }
 
   return (
-    <Card className="mx-2 mt-2 rounded-xl shadow-sm">
+    <Card className="rounded-xl shadow-lg border bg-popover text-popover-foreground overflow-hidden">
+      <div className="px-3 py-2 border-b text-xs font-semibold text-muted-foreground bg-muted/40">
+        {debouncedSearch ? "Search Results" : "Suggested Users"}
+      </div>
       <ScrollArea className="max-h-64">
         <CardContent className="p-1">
           {data.map((user) => (
             <button
               key={user.id}
+              disabled={startChat.isPending}
               className="
                 flex w-full items-center gap-3
                 rounded-lg px-3 py-2
                 text-left transition
-                hover:bg-muted
+                hover:bg-muted disabled:opacity-50
               "
               onClick={async () => {
+                if (startChat.isPending) return;
                 const res = await startChat.mutateAsync(user.id);
                 onSelectChat(res.chatId, res.user);
               }}

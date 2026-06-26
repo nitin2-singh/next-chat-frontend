@@ -9,10 +9,13 @@ export function getSocket() {
     socket = io(process.env.NEXT_PUBLIC_SOCKET_URL!, {
       path: "/socket.io",
       transports: ["websocket"],
+      autoConnect: false,
       auth: {
         token,
       },
     });
+  } else {
+    socket.auth = { token };
   }
 
   return socket;

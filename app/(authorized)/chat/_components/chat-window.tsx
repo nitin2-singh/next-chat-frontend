@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send } from "lucide-react";
+import { Send, ChevronLeft, Check, CheckCheck, X } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,10 @@ import { useMe } from "@/hooks/auth";
 import { useChatMessages, useSendMessage } from "@/hooks/chat";
 import { getSocket } from "@/lib/socket";
 import { User } from "@/types/user";
+import { axiosInstance } from "@/lib/axios-instance";
+import { useChatStore } from "@/store/chat";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { ChatResponse } from "@/types/chat";
 
 function formatTime(date: string) {
   return new Date(date).toLocaleTimeString([], {
@@ -39,12 +43,14 @@ export function ChatWindow({
 
   const socket = getSocket();
   const queryClient = useQueryClient();
+  const { setActiveChat } = useChatStore();
 
   const [message, setMessage] = useState("");
-  const [typing, setTyping] = useState(false);
-
+  const [isOnline, setIsOnline] = useState(false);
+  const { typingChats } = useChatStore();
+  const typing = typingChats[chatId];
+ 
   const bottomRef = useRef<HTMLDivElement>(null);
-  const typingTimer = useRef<NodeJS.Timeout | null>(null);
   const lastTypedRef = useRef<number>(0);
 
   /* ==============================
@@ -62,61 +68,64 @@ export function ChatWindow({
 
     socket.emit("join", chatId);
 
-    socket.on("message:new", (msg) => {
-      queryClient.setQueryData(["chat-messages", chatId], (old: any[] = []) => {
-        if (old.some((m) => m.id === msg.id)) return old;
-        return [...old, msg];
-      });
+    socket.on("presence:sync", ({ chatId: syncChatId, onlineUserIds }) => {
+      if (syncChatId !== chatId) return;
+      const otherUserOnline = onlineUserIds.includes(user.id);
+      setIsOnline(otherUserOnline);
     });
 
-    socket.on("typing", () => {
-      setTyping(true);
-      if (typingTimer.current) clearTimeout(typingTimer.current);
-      typingTimer.current = setTimeout(() => {
-        setTyping(false);
-      }, 1500);
+    socket.on("user:online", ({ userId: onlineUserId, chatId: onlineChatId }) => {
+      if (onlineChatId !== chatId) return;
+      if (onlineUserId === user.id) {
+        setIsOnline(true);
+      }
     });
 
-    socket.on("message:read", ({ chatId: readChatId }) => {
-      if (readChatId !== chatId) return;
-
-      queryClient.setQueryData(["chat-messages", chatId], (old: any[] = []) =>
-        old.map((m) =>
-          m.userId === me?.id && !m.readAt
-            ? { ...m, readAt: new Date().toISOString() }
-            : m
-        )
-      );
+    socket.on("user:offline", ({ userId: offlineUserId, chatId: offlineChatId }) => {
+      if (offlineChatId !== chatId) return;
+      if (offlineUserId === user.id) {
+        setIsOnline(false);
+      }
     });
 
     return () => {
       socket.emit("leave", chatId);
-      socket.off("message:new");
-      socket.off("typing");
-      socket.off("message:read");
+      socket.off("presence:sync");
+      socket.off("user:online");
+      socket.off("user:offline");
     };
-  }, [chatId, me?.id]);
+  }, [chatId, user.id]);
 
   /* ==============================
      Mark messages as read on open
   ============================== */
   useEffect(() => {
     if (!chatId) return;
-    fetch(`/chats/${chatId}/read`, { method: "POST" });
-  }, [chatId]);
+    axiosInstance.post(`/chats/${chatId}/read`).catch(console.error);
+
+    queryClient.setQueryData<ChatResponse[]>(["chats"], (old = []) =>
+      old.map((c) => (c.chatId === chatId ? { ...c, unreadCount: 0 } : c))
+    );
+  }, [chatId, queryClient]);
 
   /* ==============================
      Send message
   ============================== */
   async function handleSend() {
-    if (!message.trim()) return;
+    if (!message.trim() || sendMessage.isPending) return;
 
-    await sendMessage.mutateAsync({
-      chatId,
-      content: message,
-    });
+    const content = message.trim();
+    setMessage(""); // clear input immediately to prevent double submissions
 
-    setMessage("");
+    try {
+      await sendMessage.mutateAsync({
+        chatId,
+        content,
+      });
+    } catch (err) {
+      setMessage(content); // restore input if sending fails
+      console.error(err);
+    }
   }
 
   if (isLoading) {
@@ -128,33 +137,69 @@ export function ChatWindow({
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col min-h-0">
       {/* ================= Header ================= */}
-      <div className="border-b px-4 py-3 flex items-center gap-3">
-        <Avatar className="h-8 w-8">
-          <AvatarFallback>
-            {user.firstName[0]}
-            {user.lastName[0]}
-          </AvatarFallback>
-        </Avatar>
+      <div className="border-b px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 -ml-2 md:hidden"
+            onClick={() => setActiveChat(null)}
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <div className="relative">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback>
+                {user.firstName[0]}
+                {user.lastName[0]}
+              </AvatarFallback>
+            </Avatar>
+            <span
+              className={cn(
+                "absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full ring-2 ring-background",
+                isOnline ? "bg-green-500" : "bg-muted-foreground/40"
+              )}
+            />
+          </div>
 
-        <div>
-          <p className="font-medium">
-            {user.firstName} {user.lastName}
-          </p>
-          <p className="text-xs text-muted-foreground">Online</p>
+          <div>
+            <p className="font-medium">
+              {user.firstName} {user.lastName}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {isOnline ? "Online" : "Offline"}
+            </p>
+          </div>
         </div>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 hidden md:flex text-muted-foreground hover:text-foreground"
+          onClick={() => setActiveChat(null)}
+        >
+          <X className="h-4 w-4" />
+        </Button>
       </div>
 
       {/* ================= Typing indicator ================= */}
       {typing && (
-        <div className="px-4 py-2 text-xs text-muted-foreground">
-          {user.firstName} is typing…
+        <div className="px-4 py-2 flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="flex gap-1 items-center bg-muted rounded-full px-3 py-1.5 shadow-sm">
+            <span className="font-medium mr-1">{user.firstName} is typing</span>
+            <span className="flex gap-0.5 mt-0.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:-0.3s]" />
+              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:-0.15s]" />
+              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce" />
+            </span>
+          </div>
         </div>
       )}
 
       {/* ================= Messages ================= */}
-      <ScrollArea className="flex-1 px-4 py-4">
+      <ScrollArea className="flex-1 px-4 py-4 min-h-0">
         <div className="space-y-4">
           {messages.map((msg, index) => {
             const isMine = msg.userId === me?.id;
@@ -187,7 +232,15 @@ export function ChatWindow({
 
                     <p className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-70">
                       {formatTime(msg.createdAt)}
-                      {isMine && <span>{msg.readAt ? "✓✓" : "✓"}</span>}
+                      {isMine && (
+                        <span className="inline-block ml-0.5">
+                          {msg.readAt ? (
+                            <CheckCheck className="h-3.5 w-3.5 text-blue-900" />
+                          ) : (
+                            <Check className="h-3.5 w-3.5 text-black/50" />
+                          )}
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>

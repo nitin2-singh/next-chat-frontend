@@ -24,7 +24,7 @@ export default function RootLayout({
       <ThemeProviders>
         <QueryProvider>
           <Toaster />
-          <body className={`${space_grotesk.variable} antialiased`}>
+          <body className={`${space_grotesk.variable} antialiased h-screen w-screen overflow-hidden`}>
             {children}
           </body>
         </QueryProvider>

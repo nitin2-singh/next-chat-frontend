@@ -11,7 +11,6 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -92,13 +91,13 @@ export default function ProfilePage() {
         <Card className="rounded-2xl">
           <CardContent className="flex flex-col gap-6 p-6 md:flex-row md:items-center">
             <div className="flex items-center gap-5">
-              <Avatar className="h-20 w-20">
+              {/* <Avatar className="h-20 w-20">
                 <AvatarImage src="https://avatars.githubusercontent.com/u/1?v=4" />
                 <AvatarFallback>
                   {me?.firstName?.[0]}
                   {me?.lastName?.[0]}
                 </AvatarFallback>
-              </Avatar>
+              </Avatar> */}
 
               <div>
                 <h1 className="text-2xl font-semibold">
